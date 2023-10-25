@@ -68,10 +68,13 @@ while True:
                 c.connect((hostname, 80))
 
                 # Create a temporary file on this socket and ask port 80 for the file requested by the client
-                fileobj = c.makefile('rw', 0)
-                fileobj.write(b'GET /' + bytes(filename) + b' HTTP/1.1\r\nHost: ' + bytes(hostname) + b':' + 80 + b'\r\nUser-Agent: ' + bytes(userAgent) + b'\r\n\r\n')
+                fileobj = c.makefile('rw', encoding='utf-8')
+                fileobj.write(f'GET /{filename}')
+                #fileobj.write(b'GET /' + bytes(filename) + b' HTTP/1.1\r\nHost: ' + bytes(hostname) + b':' + 80 + b'\r\nUser-Agent: ' + bytes(userAgent) + b'\r\n\r\n')
                 # Read the response into buffer
                 # TODO
+
+                print("[INFO] Response read into buffer")
 
                 # Create a new file in the cache for the requested file.
                 # Also send the response in the buffer to client socket and the corresponding file in the cache
