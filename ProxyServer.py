@@ -3,8 +3,8 @@ CS432 Programming Assignment 1
 ProxyServer.py: a simple python-based proxy server using the socket library with page caching
 
 Based on starting code, modified to make it more readable.
-TEST WITH FIREFOX! Added bypass for favicon.ico for proper
-Chrome handling.
+TEST WITH FIREFOX!
+Added bypass for favicon.ico for "proper" Chrome handling.
 
 Usage:
 "python ProxyServer.py server_ip"
