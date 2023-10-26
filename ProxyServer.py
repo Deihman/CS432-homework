@@ -3,7 +3,18 @@ CS432 Programming Assignment 1
 ProxyServer.py: a simple python-based proxy server using the socket library with page caching
 
 Based on starting code, modified to make it more readable.
-TEST WITH FIREFOX! Chrome does weird stuff and makes the proxy crash after the initial site load.
+TEST WITH FIREFOX! Added bypass for favicon.ico for proper
+Chrome handling.
+
+Usage:
+"python ProxyServer.py server_ip"
+[server_ip] : IP Address of Proxy Server
+
+Then open up a browser and visit the desired website as follows:
+server_ip:5000/www.website.com/subdomain
+
+CURRENT PROBLEMS
+Websites with external .css and .js files do not transmit properly, the client only receives HTML files.
 
 Author: Calvin Stewart
 Email: cstewar2@uoregon.edu
@@ -16,7 +27,7 @@ def main():
     # check for the IP in argv
     if len(sys.argv) <= 1:
         print('''
-              Usage : "python ProxyServer.py server_ip (server_port)"
+              Usage : "python ProxyServer.py server_ip"
               [server_ip] : IP Address of Proxy Server
               ''')
         sys.exit(2)
