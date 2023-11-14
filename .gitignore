@@ -3,4 +3,5 @@
 *.io
 *.edu
 OLDPServer.py
-*.kate-swp
+*.kate-sw
+*.zip
