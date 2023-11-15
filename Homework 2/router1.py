@@ -10,10 +10,10 @@ import glob
 # The purpose of this function is to set up a socket connection.
 def create_socket(host, port):
     # 1. Create a socket.
-    ## soc = ...
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 2. Try connecting the socket to the host and port.
     try:
-        ## ...
+        soc.bind((host, port))
     except:
         print("Connection Error to", port)
         sys.exit()
@@ -30,14 +30,15 @@ def read_csv(path):
     # 3. Create an empty list to store each processed row.
     table_list = []
     # 4. For each line in the file:
-    ## for ...:
+    for line in table:
         # 5. split it by the delimiter,
-        ## ...
+        split_line = line.split(',')
         # 6. remove any leading or trailing spaces in each element, and
-        ## ...
+        for item in split_line:
+            item = item.strip()
         # 7. append the resulting list to table_list.
-        ## table_list.append(...)
-    # 8. Close the file and return table_list.
+        table_list.append(split_line)
+        # 8. Close the file and return table_list.
     table_file.close()
     return table_list
 
@@ -46,11 +47,11 @@ def read_csv(path):
 # when no match is found in the forwarding table for a packet's destination IP.
 def find_default_gateway(table):
     # 1. Traverse the table, row by row,
-    ## for ...:
+    for line in table:
         # 2. and if the network destination of that row matches 0.0.0.0,
-        ## if ...:
+        if line[0] == '0.0.0.0':
             # 3. then return the interface of that row.
-            ## return ...
+            return line[3]
 
 
 # The purpose of this function is to generate a forwarding table that includes the IP range for a given interface.
@@ -60,22 +61,22 @@ def generate_forwarding_table_with_range(table):
     # 1. Create an empty list to store the new forwarding table.
     new_table = []
     # 2. Traverse the old forwarding table, row by row,
-    ## for ...:
+    for line in table:
         # 3. and process each network destination other than 0.0.0.0
         # (0.0.0.0 is only useful for finding the default port).
-        ## if ...:
+        if line[0] != '0.0.0.0':
             # 4. Store the network destination and netmask.
-            ## network_dst_string = ...
-            ## netmask_string = ...
+            network_dst_string = line[0]
+            netmask_string = line[1]
             # 5. Convert both strings into their binary representations.
-            ## network_dst_bin = ...
-            ## netmask_bin = ...
+            network_dst_bin = ip_to_bin(network_dst_string)
+            netmask_bin = ip_to_bin(netmask_string)
             # 6. Find the IP range.
-            ## ip_range = ...
+            ip_range = find_ip_range(network_dst_bin, netmask_bin)
             # 7. Build the new row.
-            ## new_row = ...
+            new_row = None # TODO: structure the row
             # 8. Append the new row to new_table.
-            ## new_table.append(new_row)
+            new_table.append(new_row)
     # 9. Return new_table.
     return new_table
 
@@ -83,26 +84,26 @@ def generate_forwarding_table_with_range(table):
 # The purpose of this function is to convert a string IP to its binary representation.
 def ip_to_bin(ip):
     # 1. Split the IP into octets.
-    ## ip_octets = ...
+    ip_octets = ip.split('.')
     # 2. Create an empty string to store each binary octet.
     ip_bin_string = ""
     # 3. Traverse the IP, octet by octet,
-    ## for ...:
+    for octet in ip_octets:
         # 4. and convert the octet to an int,
-        ## int_octet = ...
+        int_octet = int(octet)
         # 5. convert the decimal int to binary,
-        ## bin_octet = ...
+        bin_octet = bin(int_octet)
         # 6. convert the binary to string and remove the "0b" at the beginning of the string,
-        ## bin_octet_string = ...
+        bin_octet_string = bin_octet[2:]
         # 7. while the sting representation of the binary is not 8 chars long,
         # then add 0s to the beginning of the string until it is 8 chars long
         # (needs to be an octet because we're working with IP addresses).
-        ## while ...:
-            ## bin_octet_string = ...
+        while len(bin_octet_string < 8):
+            bin_octet_string = '0' + bin_octet_string
         # 8. Finally, append the octet to ip_bin_string.
-        ## ip_bin_string = ...
+        ip_bin_string = ip_bin_string + bin_octet_string
     # 9. Once the entire string version of the binary IP is created, convert it into an actual binary int.
-    ## ip_int = ...
+    ip_int = int(ip_bin_string)
     # 10. Return the binary representation of this int.
     return bin(ip_int)
 

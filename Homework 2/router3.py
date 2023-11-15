@@ -9,10 +9,10 @@ from threading import Thread
 # The purpose of this function is to set up a socket connection.
 def create_socket(host, port):
     # 1. Create a socket.
-    ## soc = ...
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 2. Try connecting the socket to the host and port.
     try:
-        ## ...
+        soc.bind((host, port))
     except:
         print("Connection Error to", port)
         sys.exit()
@@ -29,14 +29,15 @@ def read_csv(path):
     # 3. Create an empty list to store each processed row.
     table_list = []
     # 4. For each line in the file:
-    ## for ...:
+    for line in table:
         # 5. split it by the delimiter,
-        ## ...
+        split_line = line.split(',')
         # 6. remove any leading or trailing spaces in each element, and
-        ## ...
+        for item in split_line:
+            item = item.strip()
         # 7. append the resulting list to table_list.
-        ## table_list.append(...)
-    # 8. Close the file and return table_list.
+        table_list.append(split_line)
+        # 8. Close the file and return table_list.
     table_file.close()
     return table_list
 
