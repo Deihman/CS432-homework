@@ -150,8 +150,7 @@ def find_ip_range(network_dst, netmask):
     # to get the number of total IPs in this range.
     # Because the built-in bitwise NOT or compliment operator (~) works with signed ints,
     # we need to create our own bitwise NOT operator for our unsigned int (a netmask).
-    compliment = 0b11111111111111111111111111111111 # this mask allows for a bitwise not
-    total_ip = netmask ^ compliment
+    total_ip = bit_not(netmask)
 
     # 3. Add the total number of IPs to the minimum IP
     # to get the maximum IP address in the range.
