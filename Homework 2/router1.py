@@ -95,7 +95,7 @@ def generate_forwarding_table_with_range(table):
             ip_range = find_ip_range(network_dst_bin, netmask_bin)
 
             # 7. Build the new row.
-            new_row = [network_dst_bin, netmask_bin, line[2], line[3], ip_range]
+            new_row = [network_dst_string, netmask_string, line[2], line[3], ip_range]
 
             # 8. Append the new row to new_table.
             new_table.append(new_row)
@@ -151,8 +151,7 @@ def find_ip_range(network_dst, netmask):
     # to get the number of total IPs in this range.
     # Because the built-in bitwise NOT or compliment operator (~) works with signed ints,
     # we need to create our own bitwise NOT operator for our unsigned int (a netmask).
-    compliment = 0b11111111111111111111111111111111 # this mask allows for a bitwise not
-    total_ip = netmask ^ compliment
+    total_ip = bit_not(netmask)
 
     # 3. Add the total number of IPs to the minimum IP
     # to get the maximum IP address in the range.
@@ -194,57 +193,83 @@ for f in files:
     os.remove(f)
 
 # 1. Connect to the appropriate sending ports (based on the network topology diagram).
-## ...
-## ...
+HOST = '127.0.0.1'
+sockTo2 = create_socket(HOST, 8002)
+sockTo4 = create_socket(HOST, 8004)
 
 # 2. Read in and store the forwarding table.
-forwarding_table = ...
+forwarding_table = read_csv('./input/router_1_table.csv')
+
 # 3. Store the default gateway port.
-default_gateway_port = ...
+default_gateway_port = find_default_gateway(forwarding_table)
+
 # 4. Generate a new forwarding table that includes the IP ranges for matching against destination IPS.
-forwarding_table_with_range = ...
+forwarding_table_with_range = generate_forwarding_table_with_range(forwarding_table)
 
 # 5. Read in and store the packets.
-packets_table = ...
+packets_table = read_csv('./input/packets.csv')
 
 # 6. For each packet,
 for packet in packets_table:
+
     # 7. Store the source IP, destination IP, payload, and TTL.
-    sourceIP = ...
-    destinationIP = ...
-    payload = ...
-    ttl = ...
+    sourceIP = packet[0]
+    destinationIP = packet[1]
+    payload = packet[2]
+    ttl = packet[3]
 
     # 8. Decrement the TTL by 1 and construct a new packet with the new TTL.
-    new_ttl = ...
-    new_packet = ...
+    new_ttl = ttl - 1
+    new_packet = [sourceIP, destinationIP, payload, new_ttl]
 
     # 9. Convert the destination IP into an integer for comparison purposes.
-    destinationIP_bin = ...
-    destinationIP_int = ...
+    destinationIP_bin = bin(ip_to_bin(destinationIP))[2:]
+    destinationIP_int = ip_to_bin(destinationIP)
 
     # 9. Find the appropriate sending port to forward this new packet to.
-    ## ...
+    sending_port = []
+
+    for port in forwarding_table_with_range:
+        minIP = port[4][0]
+        maxIP = port[4][1]
+
+        if minIP <= destinationIP_int <= maxIP:
+            sending_port = port
+            break
 
     # 10. If no port is found, then set the sending port to the default port.
-    ## ...
+    if sending_port == []:
+        sending_port = default_gateway_port
 
     # 11. Either
     # (a) send the new packet to the appropriate port (and append it to sent_by_router_1.txt),
     # (b) append the payload to out_router_1.txt without forwarding because this router is the last hop, or
     # (c) append the new packet to discarded_by_router_1.txt and do not forward the new packet
-    if ...:
+
+    sent = open('./output/sent_by_router_1.txt', 'a')
+    out = open('./output/out_router_1.txt', 'a')
+    discard = open('./output/discarded_by_router_1.txt', 'a')
+
+    if sending_port[3] == '8002':
         print("sending packet", new_packet, "to Router 2")
-        ## ...
-    elif ...:
-        print("sending packet", new_packet, "to Router 4")
-        ## ...
-    elif ...:
+        sockTo2.send(new_packet)
+        sent.write("sending packet", new_packet, "to Router 2\n")
+
+    elif sending_port[3] == '8004':
+        print("sending packet", new_packet, "to Router 4\n")
+        sockTo4.send(new_packet)
+        sent.write("sending packet", new_packet, "to Router 4\n")
+
+    elif sending_port == '127.0.0.1':
         print("OUT:", payload)
-        ## ...
+        out.write(payload + "\n")
+
     else:
         print("DISCARD:", new_packet)
-        ## ...
+        discard.write(f"{new_packet[0]},{new_packet[1]},{new_packet[2]},{new_packet[3]}\n")
 
     # Sleep for some time before sending the next packet (for debugging purposes)
+    sent.close()
+    out.close()
+    discard.close()
     time.sleep(1)
