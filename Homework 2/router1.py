@@ -175,16 +175,11 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 
     # 2. If this router is not sending, then just append the packet to the output file.
     if send_to_router == None:
-        # check if the path is the output file
-        if 'out_' in path:
-            out_file.write(packet_to_write[2] + "\n")
-
-        # otherwise, it's a discard
-        out_file.write(','.join(packet_to_write) + "\n")
+        out_file.write(packet_to_write + "\n")
     
     # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
     else:
-        out_file.write(','.join(packet_to_write) + " to Router " + send_to_router + "\n")
+        out_file.write(packet_to_write + " to Router " + send_to_router + "\n")
 
     # 4. Close the output file.
     out_file.close()
@@ -255,20 +250,20 @@ for packet in packets_table:
     if sending_port[3] == '8002':
         print("sending packet", new_packet, "to Router 2")
         sockTo2.send(pickle.dumps(new_packet))
-        write_to_file('./output/sent_by_router_1.txt', new_packet, 2)
+        write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 2)
 
     elif sending_port[3] == '8004':
         print("sending packet", new_packet, "to Router 4")
         sockTo4.send(pickle.dumps(new_packet))
-        write_to_file('./output/sent_by_router_1.txt', new_packet, 4)
+        write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 4)
 
     elif sending_port[3] == '127.0.0.1':
         print("OUT:", payload)
-        write_to_file('./output/out_router_1.txt', new_packet)
+        write_to_file('./output/out_router_1.txt', new_packet[2])
 
     else:
         print("DISCARD:", new_packet)
-        write_to_file('./output/discarded_by_router_1.txt', new_packet)
+        write_to_file('./output/discarded_by_router_1.txt', ','.join(new_packet))
 
     # Sleep for some time before sending the next packet (for debugging purposes)
     time.sleep(1)
