@@ -3,6 +3,7 @@ import sys
 import time
 import os
 import glob
+import pickle # for encoding and decoding lists
 
 
 # Helper Functions
@@ -127,7 +128,7 @@ def ip_to_bin(ip):
         # 7. while the sting representation of the binary is not 8 chars long,
         # then add 0s to the beginning of the string until it is 8 chars long
         # (needs to be an octet because we're working with IP addresses).
-        while len(bin_octet_string < 8):
+        while len(bin_octet_string) < 8:
             bin_octet_string = '0' + bin_octet_string
 
         # 8. Finally, append the octet to ip_bin_string.
@@ -174,11 +175,16 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 
     # 2. If this router is not sending, then just append the packet to the output file.
     if send_to_router == None:
-        out_file.write(packet_to_write + "\n")
+        # check if the path is the output file
+        if 'out_' in path:
+            out_file.write(packet_to_write[2] + "\n")
+
+        # otherwise, it's a discard
+        out_file.write(','.join(packet_to_write) + "\n")
     
     # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
     else:
-        out_file.write(packet_to_write + " " + "to Router " + send_to_router + "\n")
+        out_file.write(','.join(packet_to_write) + " to Router " + send_to_router + "\n")
 
     # 4. Close the output file.
     out_file.close()
@@ -216,11 +222,11 @@ for packet in packets_table:
     sourceIP = packet[0]
     destinationIP = packet[1]
     payload = packet[2]
-    ttl = packet[3]
+    ttl = int(packet[3])
 
     # 8. Decrement the TTL by 1 and construct a new packet with the new TTL.
     new_ttl = ttl - 1
-    new_packet = [sourceIP, destinationIP, payload, new_ttl]
+    new_packet = [str(sourceIP), str(destinationIP), str(payload), str(new_ttl)]
 
     # 9. Convert the destination IP into an integer for comparison purposes.
     destinationIP_bin = bin(ip_to_bin(destinationIP))[2:]
@@ -246,30 +252,23 @@ for packet in packets_table:
     # (b) append the payload to out_router_1.txt without forwarding because this router is the last hop, or
     # (c) append the new packet to discarded_by_router_1.txt and do not forward the new packet
 
-    sent = open('./output/sent_by_router_1.txt', 'a')
-    out = open('./output/out_router_1.txt', 'a')
-    discard = open('./output/discarded_by_router_1.txt', 'a')
-
     if sending_port[3] == '8002':
         print("sending packet", new_packet, "to Router 2")
-        sockTo2.send(new_packet)
-        sent.write("sending packet", new_packet, "to Router 2\n")
+        sockTo2.send(pickle.dumps(new_packet))
+        write_to_file('./output/sent_by_router_1.txt', new_packet, 2)
 
     elif sending_port[3] == '8004':
-        print("sending packet", new_packet, "to Router 4\n")
-        sockTo4.send(new_packet)
-        sent.write("sending packet", new_packet, "to Router 4\n")
+        print("sending packet", new_packet, "to Router 4")
+        sockTo4.send(pickle.dumps(new_packet))
+        write_to_file('./output/sent_by_router_1.txt', new_packet, 4)
 
-    elif sending_port == '127.0.0.1':
+    elif sending_port[3] == '127.0.0.1':
         print("OUT:", payload)
-        out.write(payload + "\n")
+        write_to_file('./output/out_router_1.txt', new_packet)
 
     else:
         print("DISCARD:", new_packet)
-        discard.write(f"{new_packet[0]},{new_packet[1]},{new_packet[2]},{new_packet[3]}\n")
+        write_to_file('./output/discarded_by_router_1.txt', new_packet)
 
     # Sleep for some time before sending the next packet (for debugging purposes)
-    sent.close()
-    out.close()
-    discard.close()
     time.sleep(1)
