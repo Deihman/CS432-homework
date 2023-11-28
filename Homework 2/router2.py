@@ -169,20 +169,25 @@ def bit_not(n, numbits=32):
 # The purpose of this function is to receive and process an incoming packet.
 def receive_packet(connection, max_buffer_size):
     # 1. Receive the packet from the socket.
-    ## received_packet = ...
+    received_packet = connection.recv(max_buffer_size)
+
     # 2. If the packet size is larger than the max_buffer_size, print a debugging message
     packet_size = sys.getsizeof(received_packet)
     if packet_size > max_buffer_size:
         print("The packet size is greater than expected", packet_size)
+
     # 3. Decode the packet and strip any trailing whitespace.
-    ## decoded_packet = ...
+    decoded_packet = pickle.loads(received_packet)
+
     # 3. Append the packet to received_by_router_2.txt.
-    print("received packet", decoded_packet)
-    ## ...
+    print("received packet", ','.join(decoded_packet))
+    write_to_file('./output/received_by_router_2.txt', ','.join(decoded_packet))
+
     # 4. Split the packet by the delimiter.
-    ## packet = ...
+    # packet already list
+
     # 5. Return the list representation of the packet.
-    return packet
+    return decoded_packet
 
 
 # The purpose of this function is to write packets/payload to file.
@@ -210,37 +215,42 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 # (d) forward them on, if needed.
 def start_server():
     # 1. Create a socket.
-    ## host = ...
-    ## port = ...
-    ## soc = ...
+    HOST = '127.0.0.1'
+    port = 8002
+    soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print("Socket created")
+
+    max_buffer_size = 4196
+
     # 2. Try binding the socket to the appropriate host and receiving port (based on the network topology diagram).
     try:
-        ## ...
+        soc.bind((HOST, port))
     except:
         print("Bind failed. Error : " + str(sys.exc_info()))
         sys.exit()
+
     # 3. Set the socket to listen.
-    ## ...
+    soc.listen(1)
     print("Socket now listening")
 
     # 4. Read in and store the forwarding table.
-    ## forwarding_table = ...
+    forwarding_table = read_csv('./input/router_2_table.csv')
     # 5. Store the default gateway port.
-    ## default_gateway_port = ...
+    default_gateway_port = find_default_gateway(forwarding_table)
     # 6. Generate a new forwarding table that includes the IP ranges for matching against destination IPS.
-    ## forwarding_table_with_range = ...
+    forwarding_table_with_range = generate_forwarding_table_with_range(forwarding_table)
 
     # 7. Continuously process incoming packets.
     while True:
         # 8. Accept the connection.
-        ## connection, address = ...
-        ## ip, port = ...
+        connection, address = soc.accept()
+        ip, port = ... # something goes here
         print("Connected with " + ip + ":" + port)
         # 9. Start a new thread for receiving and processing the incoming packets.
         try:
-            ## ...
+            recvThread = Thread(target=processing_thread, args=[connection, ip, port, forwarding_table_with_range, default_gateway_port])
+            recvThread.start()
         except:
             print("Thread did not start.")
             traceback.print_exc()
@@ -249,53 +259,68 @@ def start_server():
 # The purpose of this function is to receive and process incoming packets.
 def processing_thread(connection, ip, port, forwarding_table_with_range, default_gateway_port, max_buffer_size=5120):
     # 1. Connect to the appropriate sending ports (based on the network topology diagram).
-    ## ...
+    sockTo3 = create_socket(HOST, 8003)
+    sockTo4 = create_socket(HOST, 8004)
 
     # 2. Continuously process incoming packets
     while True:
         # 3. Receive the incoming packet, process it, and store its list representation
-        ## packet = ...
+        packet = receive_packet(connection, max_buffer_size)
 
         # 4. If the packet is empty (Router 1 has finished sending all packets), break out of the processing loop
-        ## if ...:
+        if len(packet) == 0:
             break
 
         # 5. Store the source IP, destination IP, payload, and TTL.
-        ## sourceIP = ...
-        ## destinationIP = ...
-        ## payload = ...
-        ## ttl = ...
+        sourceIP = packet[0]
+        destinationIP = packet[1]
+        payload = packet[2]
+        ttl = int(packet[3])
 
         # 6. Decrement the TTL by 1 and construct a new packet with the new TTL.
-        ## new_ttl = ...
-        ## new_packet = ...
+        new_ttl = ttl - 1
+        new_packet = [str(sourceIP), str(destinationIP), str(payload), str(new_ttl)]
 
         # 7. Convert the destination IP into an integer for comparison purposes.
-        ## destinationIP_bin = ...
-        ## destinationIP_int = ...
+        destinationIP_bin = bin(ip_to_bin(destinationIP))[2:]
+        destinationIP_int = ip_to_bin(destinationIP)
 
         # 8. Find the appropriate sending port to forward this new packet to.
-        ## ...
+        sending_port = []
+
+        for port in forwarding_table_with_range:
+            minIP = port[4][0]
+            maxIP = port[4][1]
+
+            if minIP <= destinationIP_int <= maxIP:
+                sending_port = port
+                break
 
         # 9. If no port is found, then set the sending port to the default port.
-        ## ...
+        if sending_port == []:
+            sending_port = default_gateway_port
 
         # 11. Either
         # (a) send the new packet to the appropriate port (and append it to sent_by_router_2.txt),
         # (b) append the payload to out_router_2.txt without forwarding because this router is the last hop, or
         # (c) append the new packet to discarded_by_router_2.txt and do not forward the new packet
-        ## if ...:
+        if sending_port[3] == '8003':
             print("sending packet", new_packet, "to Router 3")
-            ## ...
-        ## elif ...:
+            sockTo2.send(pickle.dumps(new_packet))
+            write_to_file('./output/sent_by_router_2.txt', ','.join(new_packet), 2)
+
+        elif sending_port[3] == '8004':
             print("sending packet", new_packet, "to Router 4")
-            ## ...
-        ## elif ...:
+            sockTo4.send(pickle.dumps(new_packet))
+            write_to_file('./output/sent_by_router_2.txt', ','.join(new_packet), 4)
+
+        elif sending_port[3] == '127.0.0.1':
             print("OUT:", payload)
-            ## ...
+            write_to_file('./output/out_router_2.txt', new_packet[2])
+
         else:
             print("DISCARD:", new_packet)
-            ## ...
+            write_to_file('./output/discarded_by_router_2.txt', ','.join(new_packet))
 
 
 # Main Program
