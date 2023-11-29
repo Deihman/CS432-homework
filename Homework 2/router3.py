@@ -308,8 +308,8 @@ def processing_thread(connection, ip, port, forwarding_table_with_range, default
         # (a) send the new packet to the appropriate port (and append it to sent_by_router_3.txt),
         # (b) append the payload to out_router_3.txt without forwarding because this router is the last hop, or
         # (c) append the new packet to discarded_by_router_3.txt and do not forward the new packet
-        print(f"INFO: sending port: {sending_port}")
-        print(f"INFO: port type: {type(sending_port)}")
+        # print(f"INFO: sending port: {sending_port}")
+        # print(f"INFO: port type: {type(sending_port)}")
         if sending_port[3].strip() == '127.0.0.1':
             print("OUT:", payload)
             write_to_file('./output/out_router_3.txt', new_packet[2])

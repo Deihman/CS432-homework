@@ -242,7 +242,7 @@ for packet in packets_table:
     if sending_port == []:
         sending_port = default_gateway_port
     
-    print(f"INFO: sending port: {sending_port}\nINFO: port type: {type(sending_port)}")
+    # print(f"INFO: sending port: {sending_port}\nINFO: port type: {type(sending_port)}")
 
     # 11. Either
     # (a) send the new packet to the appropriate port (and append it to sent_by_router_1.txt),
