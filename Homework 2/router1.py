@@ -16,7 +16,7 @@ def create_socket(host, port):
 
     # 2. Try connecting the socket to the host and port.
     try:
-        soc.bind((host, port))
+        soc.connect((host, port))
     except:
         print("Connection Error to", port)
         sys.exit()
@@ -39,6 +39,7 @@ def read_csv(path):
 
     # 4. For each line in the file:
     for line in table:
+        line = line.strip()
 
         # 5. split it by the delimiter,
         split_line = line.split(',')
@@ -57,7 +58,7 @@ def read_csv(path):
 
 # The purpose of this function is to find the default port
 # when no match is found in the forwarding table for a packet's destination IP.
-def find_default_gateway(table):
+def find_default_gateway(table: list [list [str]]):
 
     # 1. Traverse the table, row by row,
     for line in table:
@@ -66,13 +67,13 @@ def find_default_gateway(table):
         if line[0] == '0.0.0.0':
 
             # 3. then return the interface of that row.
-            return line[3]
+            return line
 
 
 # The purpose of this function is to generate a forwarding table that includes the IP range for a given interface.
 # In other words, this table will help the router answer the question:
 # Given this packet's destination IP, which interface (i.e., port) should I send it out on?
-def generate_forwarding_table_with_range(table):
+def generate_forwarding_table_with_range(table: list [str]):
 
     # 1. Create an empty list to store the new forwarding table.
     new_table = []
@@ -85,8 +86,8 @@ def generate_forwarding_table_with_range(table):
         if line[0] != '0.0.0.0':
 
             # 4. Store the network destination and netmask.
-            network_dst_string = line[0]
-            netmask_string = line[1]
+            network_dst_string = line[0].strip()
+            netmask_string = line[1].strip()
 
             # 5. Convert both strings into their binary representations.
             network_dst_bin = ip_to_bin(network_dst_string)
@@ -96,7 +97,7 @@ def generate_forwarding_table_with_range(table):
             ip_range = find_ip_range(network_dst_bin, netmask_bin)
 
             # 7. Build the new row.
-            new_row = [network_dst_string, netmask_string, line[2], line[3], ip_range]
+            new_row = [network_dst_string, netmask_string, line[2].strip(), line[3].strip(), ip_range]
 
             # 8. Append the new row to new_table.
             new_table.append(new_row)
@@ -175,11 +176,11 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 
     # 2. If this router is not sending, then just append the packet to the output file.
     if send_to_router == None:
-        out_file.write(packet_to_write + "\n")
+        out_file.write(f"{packet_to_write}\n")
     
     # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
     else:
-        out_file.write(packet_to_write + " to Router " + send_to_router + "\n")
+        out_file.write(f"{packet_to_write} to Router {send_to_router}\n")
 
     # 4. Close the output file.
     out_file.close()
@@ -231,8 +232,7 @@ for packet in packets_table:
     sending_port = []
 
     for port in forwarding_table_with_range:
-        minIP = port[4][0]
-        maxIP = port[4][1]
+        minIP, maxIP = port[4]
 
         if minIP <= destinationIP_int <= maxIP:
             sending_port = port
@@ -241,26 +241,36 @@ for packet in packets_table:
     # 10. If no port is found, then set the sending port to the default port.
     if sending_port == []:
         sending_port = default_gateway_port
+    
+    print(f"INFO: sending port: {sending_port}\nINFO: port type: {type(sending_port)}")
 
     # 11. Either
     # (a) send the new packet to the appropriate port (and append it to sent_by_router_1.txt),
     # (b) append the payload to out_router_1.txt without forwarding because this router is the last hop, or
     # (c) append the new packet to discarded_by_router_1.txt and do not forward the new packet
 
-    if sending_port[3] == '8002':
-        print("sending packet", new_packet, "to Router 2")
-        sockTo2.send(pickle.dumps(new_packet))
-        write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 2)
-
-    elif sending_port[3] == '8004':
-        print("sending packet", new_packet, "to Router 4")
-        sockTo4.send(pickle.dumps(new_packet))
-        write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 4)
-
-    elif sending_port[3] == '127.0.0.1':
+    if sending_port[3].strip() == '127.0.0.1':
         print("OUT:", payload)
         write_to_file('./output/out_router_1.txt', new_packet[2])
+        
+    elif new_ttl:
+        if sending_port[3].strip() == '8002':
+            print("sending packet", new_packet, "to Router 2")
+            sockTo2.send(','.join(new_packet).encode())
+            write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 2)
+            
 
+        elif sending_port[3].strip() == '8004':
+            print("sending packet", new_packet, "to Router 4")
+            sockTo4.send(','.join(new_packet).encode())
+            write_to_file('./output/sent_by_router_1.txt', ','.join(new_packet), 4)
+            
+
+        else:
+            print("DISCARD:", new_packet)
+            write_to_file('./output/discarded_by_router_1.txt', ','.join(new_packet))
+            
+    
     else:
         print("DISCARD:", new_packet)
         write_to_file('./output/discarded_by_router_1.txt', ','.join(new_packet))
